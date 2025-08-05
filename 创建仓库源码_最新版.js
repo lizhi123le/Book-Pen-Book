@@ -1,5 +1,4 @@
 name: Build Obfuscate BPB Panel
-
 on:
   push:
     branches:
