@@ -58,17 +58,13 @@ jobs:
       - name: Obfuscate BPB worker js
         run: |
           javascript-obfuscator origin.js --output _worker.js \
-            --compact true \
-            --string-array true \
             --string-array-threshold 0.5 \
             --string-array-encoding 'rc4' \
-            --identifier-names-generator hexadecimal \
             --numbers-to-expressions true \
             --transform-object-keys true \
             --rename-globals true \
             --dead-code-injection true \
             --dead-code-injection-threshold 0.3 \
-            --simplify true \
             --target 'browser-no-eval'
           ls -l _worker.js
           head -n 10 _worker.js
