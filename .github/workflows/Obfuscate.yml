@@ -63,11 +63,11 @@ jobs:
             --string-array-threshold 0.5 \
             --string-array-encoding 'rc4' \
             --identifier-names-generator hexadecimal \
-            --numbers-to-expressions: true \
-            --transform-object-keys: true \
+            --numbers-to-expressions true \
+            --transform-object-keys true \
             --rename-globals true \
             --dead-code-injection true \
-            --dead-code-injection-threshold 1 \
+            --dead-code-injection-threshold 0.3 \
             --simplify true \
             --target: "browser-no-eval"
           ls -l _worker.js
