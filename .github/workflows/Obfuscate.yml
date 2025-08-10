@@ -60,14 +60,14 @@ jobs:
           javascript-obfuscator origin.js --output _worker.js \
           --compact true \
           --control-flow-flattening true \
-          --control-flow-flattening-threshold 0.5 \
+          --control-flow-flattening-threshold 0.3 \
           --dead-code-injection true \
-          --dead-code-injection-threshold 0.5 \
+          --dead-code-injection-threshold 0.3 \
           --identifier-names-generator hexadecimal \
           --rename-globals true \
           --string-array true \
           --string-array-encoding 'rc4' \
-          --string-array-threshold 1 \
+          --string-array-threshold 0.3 \
           --transform-object-keys true \
           --unicode-escape-sequence true
           ls -l _worker.js
