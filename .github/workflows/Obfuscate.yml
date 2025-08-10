@@ -69,7 +69,7 @@ jobs:
             --dead-code-injection true \
             --dead-code-injection-threshold 0.3 \
             --simplify true \
-            --target "browser-no-eval"
+            --target 'browser-no-eval'
           ls -l _worker.js
           head -n 10 _worker.js
           # Check file size (in bytes)
