@@ -58,11 +58,18 @@ jobs:
       - name: Obfuscate BPB worker js
         run: |
           javascript-obfuscator origin.js --output _worker.js \
-            --compact true \
-            --identifier-names-generator hexadecimal \
-            --string-array true \
-            --string-array-threshold 0.5 \
-            --simplify true
+          --compact true \
+          --control-flow-flattening true \
+          --control-flow-flattening-threshold 0.5 \
+          --dead-code-injection true \
+          --dead-code-injection-threshold 0.5 \
+          --identifier-names-generator hexadecimal \
+          --rename-globals true \
+          --string-array true \
+          --string-array-encoding 'rc4' \
+          --string-array-threshold 1 \
+          --transform-object-keys true \
+          --unicode-escape-sequence true
           ls -l _worker.js
           head -n 10 _worker.js
           # Check file size (in bytes)
