@@ -52,9 +52,9 @@ jobs:
             exit 1
           fi
           echo "Downloading from: $DOWNLOAD_URL"
-          wget -O src/worker.js "$DOWNLOAD_URL"
-          ls -l src/worker.js
-          head -n 10 src/worker.js
+          wget -O origin.js "$DOWNLOAD_URL"
+          ls -l origin.js
+          head -n 10 origin.js
           echo "Downloading from: $DOWNLOAD_URL"
           wget -O RELEASE.md "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md"
           ls -l RELEASE.md
