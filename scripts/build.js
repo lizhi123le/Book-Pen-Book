@@ -9,8 +9,8 @@ import JsConfuser from 'js-confuser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = pathDirname(__filename);
 
-const DIST_PATH = join(__dirname, '../output/');
-const ENTRY = join(__dirname, '../src/worker.js');
+const DIST_PATH = join(__dirname, '../');
+const ENTRY = join(__dirname, '../worker.js');
 const SENSITIVE_WORDS_FILE = join(__dirname, '../sensitive_words_auto.txt');
 
 // Helper: random int in [min, max]
@@ -182,4 +182,5 @@ process.exit(1);
 buildWorker().catch(err => {
     console.error('❌ Build failed:', err);
     process.exit(1);
+
 });
