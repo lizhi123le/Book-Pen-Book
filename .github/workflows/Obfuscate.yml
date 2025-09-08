@@ -53,6 +53,10 @@ jobs:
           wget -O src/worker.js "$DOWNLOAD_URL"
           ls -l src/worker.js
           head -n 10 src/worker.js
+          echo "Downloading from: $DOWNLOAD_URL2"
+          wget -O RELEASE.md "$DOWNLOAD_URL2"
+          ls -l RELEASE.md
+          head -n 10 RELEASE.md
 
       - name: Install dependencies
         run: npm install
