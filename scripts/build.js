@@ -9,7 +9,7 @@ import JsConfuser from 'js-confuser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = pathDirname(__filename);
 
-const DIST_PATH = join(__dirname, '../');
+const DIST_PATH = join(__dirname, '../dist/');
 const ENTRY = join(__dirname, '../worker.js');
 const SENSITIVE_WORDS_FILE = join(__dirname, '../sensitive_words_auto.txt');
 
@@ -184,3 +184,4 @@ buildWorker().catch(err => {
     process.exit(1);
 
 });
+
