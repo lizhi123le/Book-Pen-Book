@@ -82,5 +82,5 @@ jobs:
           release_name: Release v${{ env.RELEASE_VERSION }}
           overwrite: true
           file_glob: true
-          release: true
+          prelease: false
           body: ${{ steps.read_release.outputs.RELEASE_BODY }}
