@@ -63,8 +63,7 @@ jobs:
       - name: Build project
         run: |
             npm run build
-            cp -f _worker.js output/worker.js
-            zip -j output/worker.zip _worker.js
+            cp -f dist/* output/worker.js
 
       - name: Read release note
         id: read_release
