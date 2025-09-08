@@ -51,30 +51,41 @@ jobs:
             exit 1
           fi
           echo "Downloading from: $DOWNLOAD_URL"
-          wget -O origin.js "$DOWNLOAD_URL"
-          ls -l origin.js
-          head -n 10 origin.js
+          wget -O /src/worker.js "$DOWNLOAD_URL"
+          ls -l /src/worker.js
+          head -n 10 /src/worker.js
 
-      - name: Obfuscate BPB worker js
+      - name: Get release version
+        id: get_version
+        run: echo "RELEASE_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+
+      - name: Check release version
+        run: echo "Release version is $RELEASE_VERSION"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Read release note
+        id: read_release
+        shell: bash
         run: |
-          javascript-obfuscator origin.js --output _worker.js \
-            --compact true \
-            --identifier-names-generator hexadecimal \
-            --string-array true \
-            --string-array-threshold 0.5 \
-            --simplify true
-          ls -l _worker.js
-          head -n 10 _worker.js
-          # Check file size (in bytes)
-          FILE_SIZE=$(stat -f %z _worker.js || stat -c %s _worker.js)
-          echo "Output file size: $FILE_SIZE bytes"
-          if [ "$FILE_SIZE" -gt 500000 ]; then
-            echo "Warning: _worker.js size exceeds 500KB, may cause Cloudflare CPU limit errors"
-          fi
+          r=$(cat RELEASE.md)         
+          r="${r//'%'/'%25'}"                               
+          r="${r//$'\n'/'%0A'}"                             
+          r="${r//$'\r'/'%0D'}"                             
+          echo "RELEASE_BODY=$r" >> $GITHUB_OUTPUT          
 
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Upload Release Assets
+        uses: svenstaro/upload-release-action@v2
         with:
-          branch: main
-          commit_message: ':arrow_up: update latest bpb panel'
-          commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: output/*
+          tag: v${{ env.RELEASE_VERSION }}
+          release_name: Release v${{ env.RELEASE_VERSION }}
+          overwrite: true
+          file_glob: true
+          prerelease: true
+          body: ${{ steps.read_release.outputs.RELEASE_BODY }}
