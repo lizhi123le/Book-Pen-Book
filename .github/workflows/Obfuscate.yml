@@ -61,7 +61,7 @@ jobs:
           head -n 10 RELEASE.md
 
       - name: Build project
-        run: 
+        run: |
             npm run build
             cp -f _worker.js output/worker.js
             zip -j output/worker.zip _worker.js
