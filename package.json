@@ -1,0 +1,26 @@
+{
+  "name": "build",
+  "version": "1.0.0",
+  "type": "module",
+  "author": {
+    "name": "vadash"
+  },
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "devDependencies": {
+    "js-confuser": "latest",
+    "uglify-js": "latest",
+    "wrangler": "latest",
+		"esbuild": "latest",
+		"glob": "latest",
+		"html-minifier": "latest",
+		"terser": "latest"
+  },
+  "dependencies": {
+    "jose": "5.9.6",
+    "js-sha256": "latest",
+    "tweetnacl": "latest",
+    "jszip": "latest"
+  }
+}
