@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = pathDirname(__filename);
 
 const DIST_PATH = join(__dirname, '../dist/');
-const ENTRY = join(__dirname, '../worker.js');
+const ENTRY = join(__dirname, '../origin.js');
 const SENSITIVE_WORDS_FILE = join(__dirname, '../sensitive_words_auto.txt');
 
 // Helper: random int in [min, max]
@@ -184,4 +184,5 @@ buildWorker().catch(err => {
     process.exit(1);
 
 });
+
 
