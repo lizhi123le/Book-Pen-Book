@@ -63,7 +63,8 @@ jobs:
       - name: Build project
         run: |
             npm run build
-            cp -f dist/* output/worker.js
+            cp -f dist/_worker.js _worker.js 
+            cp -f dist/* output/
 
       - name: Read release note
         id: read_release
