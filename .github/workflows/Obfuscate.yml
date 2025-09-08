@@ -43,9 +43,9 @@ jobs:
             exit 1
           fi
           echo "Downloading from: $DOWNLOAD_URL"
-          wget -O /src/worker.js "$DOWNLOAD_URL"
-          ls -l /src/worker.js
-          head -n 10 /src/worker.js
+          wget -O src/worker.js "$DOWNLOAD_URL"
+          ls -l src/worker.js
+          head -n 10 src/worker.js
 
       - name: Install dependencies
         run: npm install
