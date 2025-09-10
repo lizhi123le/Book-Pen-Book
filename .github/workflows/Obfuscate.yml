@@ -114,9 +114,16 @@ jobs:
           echo "Warning: dist/_worker.js not found. Skipping copy to _worker.js."
         fi
         if [ -f RELEASE.md ]; then
+          cp -v RELEASE.md RELEASE.md
           cp -v RELEASE.md output/RELEASE.md
         else
           echo "Warning: RELEASE.md not found. Skipping copy to RELEASE.md."
+        fi
+        if [ -f origin.js ]; then
+          cp -v origin.js RELEASE.md
+          cp -v origin.js output/RELEASE.md
+        else
+          echo "Warning: origin.js not found. Skipping copy to origin.js."
         fi
 
         # Copy all files from dist to output
