@@ -123,11 +123,6 @@ jobs:
         else
           echo "Warning: origin.js not found. Skipping copy to origin.js."
         fi
-        if [ -f output/RELEASE.md ]; then
-          cp -v output/RRELEASE.md RELEASE.md
-        else
-          echo "Warning: RELEASE.md not found. Skipping copy to RELEASE.md."
-        fi
 
         # Copy all files from dist to output
         cp -v dist/* output/ || { echo "Failed to copy dist/* to output/"; ls -la dist; exit 1; }
