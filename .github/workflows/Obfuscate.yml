@@ -18,7 +18,7 @@ jobs:
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
-steps:
+    steps:
     - name: Check out the code
       uses: actions/checkout@v4
 
