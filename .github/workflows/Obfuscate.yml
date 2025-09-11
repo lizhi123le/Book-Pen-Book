@@ -45,7 +45,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -euo pipefail
-        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/previous/latest)
+        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/releases/latest)
         RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
         echo "Latest Release: $RELEASE_TAG"
         DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "worker.js") | .browser_download_url')
