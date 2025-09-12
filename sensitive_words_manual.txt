@@ -1,10 +1,7 @@
-bpb
-vless
-trojan
-vpn
-proxy
+#vless_stuff#
 isVless
 vlessPort
+#let_stuff#
 activePortsNo
 activeHttpsPortsNo
 activeProtocols
@@ -13,6 +10,7 @@ qrcodeContainer
 forcedPassChange
 qrcodeTitle
 qrcodeDiv
+#const_stuff#
 configForm
 changePass
 closeBtn
@@ -38,6 +36,8 @@ openQR
 applySettings
 invalidIPs
 copyToClipboard
+#modal#
+#applyButton#
 validTransmission
 validIPDomain
 checkedPorts
@@ -55,4 +55,9 @@ isSocksHttp
 hasSecurity
 securityRegex
 validSecurityType
+#chainProxy#
 securityType
+#textarea#
+#resetSettings#
+#formData#
+#getValue#
