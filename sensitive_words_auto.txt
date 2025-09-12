@@ -4,6 +4,8 @@ trojan
 vpn
 proxy
 port
+tcp
+reality
 proxyip
 uuid
 edgetunnel
