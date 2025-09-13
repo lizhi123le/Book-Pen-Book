@@ -43,7 +43,7 @@ jobs:
         id: fetch_upstream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_OWNER: bia-pain-bache               # <-- 替换为实际 upstream owner/org
+          UPSTREAM_OWNER: lizhi123le                   # <-- 替换为实际 upstream owner/org
           UPSTREAM_REPO: BPB-Worker-Panel              # <-- 替换为实际 upstream repo
         run: |
           set -euo pipefail
@@ -51,7 +51,7 @@ jobs:
           # 查询 upstream 的 latest release 信息并下载 worker.js（如果存在）
           echo "Querying latest release for $UPSTREAM_OWNER/$UPSTREAM_REPO"
           RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/releases/latest")
+            "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
 
           RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name // empty')
           echo "upstream_release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
