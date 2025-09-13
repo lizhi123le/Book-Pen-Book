@@ -12,10 +12,10 @@
     "js-confuser": "latest",
     "uglify-js": "latest",
     "wrangler": "latest",
-		"esbuild": "latest",
-		"glob": "latest",
-		"html-minifier": "latest",
-		"terser": "latest"
+    "esbuild": "latest",
+    "glob": "latest",
+    "html-minifier": "latest",
+    "terser": "latest"
   },
   "dependencies": {
     "jose": "5.9.6",
