@@ -175,7 +175,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: output/*,dist/*            # 上传 output 下的产物（及 dist 下的文件以防遗漏）
+          file: dist/*            # 上传 output 下的产物（及 dist 下的文件以防遗漏）
           tag: v${{ env.RELEASE_VERSION }}
           release_name: Release v${{ env.RELEASE_VERSION }}
           overwrite: true
