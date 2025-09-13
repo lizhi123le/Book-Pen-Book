@@ -42,18 +42,35 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y jq
 
-    - name: Fetch upstream package.json
+    - name: Fetch and download latest worker.js from release
       env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         UPSTREAM_OWNER: upstream-owner-or-org
         UPSTREAM_REPO: upstream-repo-name
         UPSTREAM_PATH: package.json
-        # 若私有仓库请传入有读取权限的 token（例如使用 repo 的 PAT），否则可用 GITHUB_TOKEN 但需设置权限
-        run: |
-        # 下载 raw content via GitHub API
-        curl -sSf -H "Accept: application/vnd.github.v3.raw" \
-        -H "Authorization: token $GITHUB_TOKEN" \
-        "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/package.json" \
-        -o /tmp/upstream_package.js
+      run: |
+        set -euo pipefail
+        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/releases/latest)
+        RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
+        echo "Latest Release: $RELEASE_TAG"
+        DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "worker.js") | .browser_download_url')
+        if [ -z "$DOWNLOAD_URL" ]; then
+            echo "Error: Could not find worker.js in latest release"
+          exit 1
+        fi
+        echo "Downloading from: $DOWNLOAD_URL"
+        wget -O origin.js "$DOWNLOAD_URL"
+        ls -l origin.js || true
+        head -n 10 origin.js || true
+        echo "Downloading RELEASE.md from repo"
+        wget -O RELEASE.md "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
+        ls -l RELEASE.md || true
+        head -n 10 RELEASE.md || true
+        echo "Downloading package.json from repo"
+        wget -O /tmp/upstream_package.json
+        "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
+        ls -l /tmp/upstream_package.json || true
+        head -n 10 /tmp/upstream_package.json || true
 
     - name: Extract upstream version
       id: extract
@@ -76,28 +93,6 @@ jobs:
         git add package.json
         git commit -m "chore: sync package.json version from ${UPSTREAM_OWNER}/${UPSTREAM_REPO} (${ { { steps.extract.outputs.version } } })" || echo "no changes to commit"
         git push
-
-    - name: Fetch and download latest worker.js from release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -euo pipefail
-        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/releases/latest)
-        RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
-        echo "Latest Release: $RELEASE_TAG"
-        DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "worker.js") | .browser_download_url')
-        if [ -z "$DOWNLOAD_URL" ]; then
-            echo "Error: Could not find worker.js in latest release"
-          exit 1
-        fi
-        echo "Downloading from: $DOWNLOAD_URL"
-        wget -O origin.js "$DOWNLOAD_URL"
-        ls -l origin.js || true
-        head -n 10 origin.js || true
-        echo "Downloading RELEASE.md from repo"
-        wget -O RELEASE.md "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
-        ls -l RELEASE.md || true
-        head -n 10 RELEASE.md || true
 
     - name: Build project
       run: npm run build
