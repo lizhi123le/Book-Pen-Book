@@ -21,6 +21,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v4
+      with:
+       persist-credentials: true
 
     - name: Get release version
       id: get_version
@@ -39,6 +41,41 @@ jobs:
         npm install
         sudo apt-get update
         sudo apt-get install -y jq
+
+    - name: Fetch upstream package.json
+      env:
+        UPSTREAM_OWNER: upstream-owner-or-org
+        UPSTREAM_REPO: upstream-repo-name
+        UPSTREAM_PATH: package.json
+        # 若私有仓库请传入有读取权限的 token（例如使用 repo 的 PAT），否则可用 GITHUB_TOKEN 但需设置权限
+        run: |
+        # 下载 raw content via GitHub API
+        curl -sSf -H "Accept: application/vnd.github.v3.raw" \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/package.json" \
+        -o /tmp/upstream_package.js
+
+    - name: Extract upstream version
+      id: extract
+      run: |
+        VERSION=$(jq -r '.version' /tmp/upstream_package.json)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Update local package.json version
+      run: |
+        if [ -z "${{ steps.extract.outputs.version }}" ] || [ "${{ steps.extract.outputs.version }}" = "null" ]; then
+          echo "No version found in upstream, exiting."
+          exit 1
+        fi
+        # 安全备份
+        cp package.json package.json.bak
+        # 用 jq 修改当前仓库 package.json 的 version 字段
+        jq --arg v "${{ steps.extract.outputs.version }}" '.version=$v' package.json > package.json.tmp && mv package.json.tmp package.json
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add package.json
+        git commit -m "chore: sync package.json version from ${UPSTREAM_OWNER}/${UPSTREAM_REPO} (${ { { steps.extract.outputs.version } } })" || echo "no changes to commit"
+        git push
 
     - name: Fetch and download latest worker.js from release
       env:
