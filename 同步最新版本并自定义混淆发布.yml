@@ -43,7 +43,7 @@ jobs:
         id: fetch_upstream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_OWNER: bia-pain-bache               # <-- 替换为实际 upstream owner/org
+          UPSTREAM_OWNER: lizhi123le                   # <-- 替换为实际 upstream owner/org
           UPSTREAM_REPO: BPB-Worker-Panel              # <-- 替换为实际 upstream repo
         run: |
           set -euo pipefail
@@ -67,7 +67,7 @@ jobs:
 
           # 拉取 upstream 仓库 dev 分支的 package.json（用于同步版本）
           echo "Downloading upstream package.json (dev branch)"
-          wget -q -O /tmp/upstream_package.json "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/dev/package.json" || true
+          wget -q -O /tmp/upstream_package.json "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/package.json" || true
           if [ -f /tmp/upstream_package.json ]; then
             echo "upstream_package_json=true" >> $GITHUB_OUTPUT
             head -n 5 /tmp/upstream_package.json || true
@@ -76,7 +76,7 @@ jobs:
           fi
 
           # 下载本仓库 RELEASE.md（可选）
-          if wget -q -O RELEASE.md "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/RELEASE.md" || true; then
+          if wget -q -O RELEASE.md "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/RELEASE.md" || true; then
             echo "RELEASE_md=true" >> $GITHUB_OUTPUT
           else
             echo "RELEASE_md=false" >> $GITHUB_OUTPUT
