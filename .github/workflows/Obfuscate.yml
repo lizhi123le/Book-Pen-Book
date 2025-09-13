@@ -43,8 +43,8 @@ jobs:
         id: fetch_upstream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_OWNER: lizhi123le/Book-Pen-Book                # <-- 替换为实际 upstream owner/org
-          UPSTREAM_REPO: bia-pain-bache/BPB-Worker-Panel          # <-- 替换为实际 upstream repo
+          UPSTREAM_OWNER: bia-pain-bache               # <-- 替换为实际 upstream owner/org
+          UPSTREAM_REPO: BPB-Worker-Panel          # <-- 替换为实际 upstream repo
         run: |
           set -euo pipefail
 
