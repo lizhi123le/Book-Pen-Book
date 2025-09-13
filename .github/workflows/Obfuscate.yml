@@ -67,14 +67,14 @@ jobs:
         ls -l RELEASE.md || true
         head -n 10 RELEASE.md || true
         echo "Downloading package.json from repo"
-        wget -O upstream_package.json "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
-        ls -l upstream_package.json || true
-        head -n 10 upstream_package.json || true
+        wget -O /tmp/upstream_package.json "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
+        ls -l /tmp/upstream_package.json || true
+        head -n 10 /tmp/upstream_package.json || true
 
     - name: Extract upstream version
       id: extract
       run: |
-        VERSION=$(jq -r '.version' upstream_package.json)
+        VERSION=$(jq -r '.version' /tmp/upstream_package.json)
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Update local package.json version
