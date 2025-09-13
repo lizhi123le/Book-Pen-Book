@@ -44,7 +44,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPSTREAM_OWNER: bia-pain-bache               # <-- 替换为实际 upstream owner/org
-          UPSTREAM_REPO: BPB-Worker-Panel          # <-- 替换为实际 upstream repo
+          UPSTREAM_REPO: BPB-Worker-Panel              # <-- 替换为实际 upstream repo
         run: |
           set -euo pipefail
 
@@ -122,6 +122,7 @@ jobs:
 
           # Read RELEASE.md into output variable (URL-encode newlines)
           if [ -f RELEASE.md ]; then
+            # encode percent and newlines so it is safe to pass as a single-line output
             body=$(sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' RELEASE.md)
             echo "RELEASE_BODY=$body" >> $GITHUB_OUTPUT
           else
@@ -137,14 +138,31 @@ jobs:
 
           # Prepare output dir and copy artifacts
           mkdir -p output
-          cp -a dist/* output/ || { echo "Failed to copy dist/*"; ls -la dist; exit 1; }
+          # Use a safe copy pattern that won't fail the workflow command processing
+          # and avoid creating outputs with names that include newlines or other invalid chars.
+          shopt -s nullglob
+          copied_files=()
+          for f in dist/*; do
+            cp -a "$f" output/ || { echo "Failed to copy $f"; ls -la dist; exit 1; }
+            copied_files+=("$(basename "$f")")
+          done
+          shopt -u nullglob
 
           # copy optional files if present
           [ -f origin.js ] && cp origin.js output/ || true
           [ -f RELEASE.md ] && cp RELEASE.md output/ || true
-          [ -f dist/_worker.js ] && cp dist/_worker.js _worker.js || true
+          # If dist/_worker.js exists, copy it into repository root as _worker.js (but avoid adding invalid output lines)
+          if [ -f dist/_worker.js ]; then
+            cp dist/_worker.js _worker.js || true
+          fi
 
-          echo "output_list=$(ls -1 output || true)" >> $GITHUB_OUTPUT
+          # Build a safe, newline-separated list for output (no trailing newlines that could confuse workflow commands)
+          if [ -d output ]; then
+            files_list=$(ls -1 output | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g')
+            echo "output_list=$files_list" >> $GITHUB_OUTPUT
+          else
+            echo "output_list=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit build artifacts back to repo
         if: always()
@@ -175,7 +193,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/*            # 上传 output 下的产物（及 dist 下的文件以防遗漏）
+          file: output/*            # 上传 output 下的产物（以及 dist 下复制过来的文件）
           tag: v${{ env.RELEASE_VERSION }}
           release_name: Release v${{ env.RELEASE_VERSION }}
           overwrite: true
