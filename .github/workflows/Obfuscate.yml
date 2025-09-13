@@ -5,8 +5,8 @@ permissions:
 
 on:
   push:
-    branches: 
-         - main
+    branches:
+      - main
   workflow_dispatch:
   schedule:
     - cron: '0 */3 * * *'
@@ -14,204 +14,171 @@ on:
 jobs:
   build:
     if: |
-      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out the code
-      uses: actions/checkout@v4
-      with:
-       persist-credentials: true
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-    - name: Get release version
-      id: get_version
-      run: echo "RELEASE_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
 
-    - name: Check release version
-      run: echo "Release version is $RELEASE_VERSION"
+      - name: Install dependencies
+        run: |
+          npm install
+          sudo apt-get update
+          sudo apt-get install -y jq
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: "latest"
+      - name: Get local release version
+        id: get_local_version
+        run: echo "RELEASE_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
 
-    - name: Install dependencies
-      run: |
-        npm install
-        sudo apt-get update
-        sudo apt-get install -y jq
+      - name: Fetch latest upstream release and worker.js
+        id: fetch_upstream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_OWNER: lizhi123le/Book-Pen-Book                # <-- 替换为实际 upstream owner/org
+          UPSTREAM_REPO: bia-pain-bache/BPB-Worker-Panel          # <-- 替换为实际 upstream repo
+        run: |
+          set -euo pipefail
 
-    - name: Fetch and download latest worker.js from release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        UPSTREAM_OWNER: upstream-owner-or-org
-        UPSTREAM_REPO: upstream-repo-name
-        UPSTREAM_PATH: package.json
-      run: |
-        set -euo pipefail
-        RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/lizhi123le/BPB-Worker-Panel/releases/latest)
-        RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name')
-        echo "Latest Release: $RELEASE_TAG"
-        DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name == "worker.js") | .browser_download_url')
-        if [ -z "$DOWNLOAD_URL" ]; then
-            echo "Error: Could not find worker.js in latest release"
-          exit 1
-        fi
-        echo "Downloading from: $DOWNLOAD_URL"
-        wget -O origin.js "$DOWNLOAD_URL"
-        ls -l origin.js || true
-        head -n 10 origin.js || true
-        echo "Downloading RELEASE.md from repo"
-        wget -O RELEASE.md "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/RELEASE.md" || true
-        ls -l RELEASE.md || true
-        head -n 10 RELEASE.md || true
-        echo "Downloading upstream_package.json from repo"
-        wget -O /tmp/upstream_package.json "https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/dev/package.json" || true
-        ls -l /tmp/upstream_package.json || true
-        head -n 20 /tmp/upstream_package.json || true
-        
-    - name: Extract upstream version
-      id: extract
-      run: |
-        VERSION=$(jq -r '.version' /tmp/upstream_package.json)
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # 查询 upstream 的 latest release 信息并下载 worker.js（如果存在）
+          echo "Querying latest release for $UPSTREAM_OWNER/$UPSTREAM_REPO"
+          RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
 
-    - name: Update local package.json version
-      run: |
-        if [ -z "${{ steps.extract.outputs.version }}" ] || [ "${{ steps.extract.outputs.version }}" = "null" ]; then
-          echo "No version found in upstream, exiting."
-          exit 1
-        fi
-        # 安全备份
-        cp package.json package.json.bak
-        # 用 jq 修改当前仓库 package.json 的 version 字段
-        jq --arg v "${{ steps.extract.outputs.version }}" '.version=$v' package.json > package.json.tmp && mv package.json.tmp package.json
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add package.json
-        git commit -m "chore: sync package.json version from {UPSTREAM_OWNER}/UPSTREAM_REPO(UPSTREAM_REPO({RELEASE_VERSION})" || echo "no changes to commit"
-        git push
+          RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name // empty')
+          echo "upstream_release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Build project
-      run: npm run build
-
-    - name: Show dist contents (debug)
-      run: |
-        echo "Working directory: $(pwd)"
-        echo "Listing repository root:"
-        ls -la
-        echo "Dist directory listing (if exists):"
-        ls -la dist || true
-        echo "Top of dist files (if any):"
-        for f in dist/*; do
-          if [ -f "$f" ]; then
-            echo "---- $f ----"
-            head -n 5 "$f" || true
+          DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name=="worker.js") | .browser_download_url' || true)
+          if [ -n "$DOWNLOAD_URL" ]; then
+            echo "Found worker.js at $DOWNLOAD_URL, downloading..."
+            wget -q -O origin.js "$DOWNLOAD_URL"
+            echo "Downloaded origin.js size:" && ls -l origin.js || true
+          else
+            echo "No worker.js asset found in latest upstream release."
           fi
-        done
 
-    - name: Read release note and copy built files
-      id: read_release
-      shell: bash
-      run: |
-        set -euo pipefail
+          # 拉取 upstream 仓库 dev 分支的 package.json（用于同步版本）
+          echo "Downloading upstream package.json (dev branch)"
+          wget -q -O /tmp/upstream_package.json "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/dev/package.json" || true
+          if [ -f /tmp/upstream_package.json ]; then
+            echo "upstream_package_json=true" >> $GITHUB_OUTPUT
+            head -n 5 /tmp/upstream_package.json || true
+          else
+            echo "upstream_package_json=false" >> $GITHUB_OUTPUT
+          fi
 
-        # Ensure RELEASE.md exists
-        if [ ! -f RELEASE.md ]; then
-          echo "Warning: RELEASE.md not found in repo root. Proceeding without release notes."
-          echo "RELEASE_BODY=" >> "$GITHUB_OUTPUT"
-        else
-          r=$(cat RELEASE.md)
-          r="${r//'%'/'%25'}"
-          r="${r//$'\n'/'%0A'}"
-          r="${r//$'\r'/'%0D'}"
-          echo "RELEASE_BODY=$r" >> "$GITHUB_OUTPUT"
-        fi
+          # 下载本仓库 RELEASE.md（可选）
+          if wget -q -O RELEASE.md "https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/main/RELEASE.md" || true; then
+            echo "RELEASE_md=true" >> $GITHUB_OUTPUT
+          else
+            echo "RELEASE_md=false" >> $GITHUB_OUTPUT
+          fi
 
-        # Ensure dist exists
-        if [ ! -d dist ]; then
-          echo "Error: dist directory not found. Build may have failed."
-          echo "Listing workspace:"
-          ls -la
-          exit 1
-        fi
+      - name: Extract upstream version
+        id: extract_upstream_version
+        run: |
+          set -euo pipefail
+          if [ -f /tmp/upstream_package.json ]; then
+            VERSION=$(jq -r '.version // empty' /tmp/upstream_package.json)
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=" >> $GITHUB_OUTPUT
+          fi
 
-        # Create output directory and copy files
-        mkdir -p output
-        if [ -f dist/_worker.js ]; then
-          cp -v dist/_worker.js _worker.js || { echo "Failed to copy dist/_worker.js"; ls -la dist; exit 1; }
-        else
-          echo "Warning: dist/_worker.js not found. Skipping copy to _worker.js."
-        fi
-        if [ -f RELEASE.md ]; then
-          cp -v RELEASE.md output/RELEASE.md
-        else
-          echo "Warning: RELEASE.md not found. Skipping copy to RELEASE.md."
-        fi
-        if [ -f origin.js ]; then
-          cp -v origin.js output/origin.js
-        else
-          echo "Warning: origin.js not found. Skipping copy to origin.js."
-        fi
+      - name: Sync package.json version (if found)
+        run: |
+          set -euo pipefail
+          UPVER="${{ steps.extract_upstream_version.outputs.version }}"
+          if [ -z "$UPVER" ]; then
+            echo "No upstream version found; skipping package.json sync."
+            exit 0
+          fi
 
-        # Copy all files from dist to output
-        cp -v dist/* output/ || { echo "Failed to copy dist/* to output/"; ls -la dist; exit 1; }
+          # 备份并更新 package.json 的 version 字段
+          cp package.json package.json.bak
+          jq --arg v "$UPVER" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
 
-        echo "After copy, output listing:"
-        ls -la output
-        if [ -f _worker.js ]; then
-          echo "Top of _worker.js:"
-          head -n 20 _worker.js || true
-        fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: sync package.json version from upstream ($UPVER)" || echo "No version change to commit"
+          git push || echo "Push failed (maybe no credential); continuing"
 
-    - name: Commit and push built files back to repo
-      if: always()
-      env:
-        GIT_AUTHOR_NAME: "github-actions[bot]"
-        GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
-      run: |
-        set -euo pipefail
-        # Ensure we have the checkout and credentials
-        git status --porcelain --untracked-files=all || true
+      - name: Build
+        run: npm run build
 
-        # Add the files you want to persist back to the repo.
-        # Here: copy output/* into a folder in the repo (e.g. artifacts/) before committing,
-        # or commit output/* in-place. If you prefer to keep build artifacts in output/, commit them there.
-        # We'll stage output/* and also _worker.js if present.
-        git add -A output || true
-        if [ -f _worker.js ]; then
-          git add _worker.js || true
-        fi
-        if [ -f origin.js ]; then
-          git add origin.js || true
-        fi
-        if [ -f RELEASE.md ]; then
-          git add RELEASE.md || true
-        fi
-        
+      - name: Prepare release notes and collect artifacts
+        id: prepare_artifacts
+        run: |
+          set -euo pipefail
 
-        # Show staged changes
-        echo "Staged changes:"
-        git --no-pager diff --cached --name-status || true
+          # Read RELEASE.md into output variable (URL-encode newlines)
+          if [ -f RELEASE.md ]; then
+            body=$(sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' RELEASE.md)
+            echo "RELEASE_BODY=$body" >> $GITHUB_OUTPUT
+          else
+            echo "RELEASE_BODY=" >> $GITHUB_OUTPUT
+          fi
 
-        # Only commit if there are staged changes
-        if git diff --cached --quiet; then
-          echo "No changes to commit."
-        else
-          git -c user.name="$GIT_AUTHOR_NAME" -c user.email="$GIT_AUTHOR_EMAIL" commit -m "chore(ci): add build artifacts from workflow"
-          # Push back to the same branch (main). persist-credentials: true ensures GITHUB_TOKEN is used.
-          git push origin HEAD:main
-        fi
+          # Ensure dist exists
+          if [ ! -d dist ]; then
+            echo "Error: dist directory not found. Build may have failed."
+            ls -la
+            exit 1
+          fi
 
-    - name: Upload Release Assets
-      uses: svenstaro/upload-release-action@v2
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: dist/*
-        tag: v${{ env.RELEASE_VERSION }}
-        release_name: Release v${{ env.RELEASE_VERSION }}
-        overwrite: true
-        file_glob: true
-        prerelease: false
-        body: ${{ steps.read_release.outputs.RELEASE_BODY }}
+          # Prepare output dir and copy artifacts
+          mkdir -p output
+          cp -a dist/* output/ || { echo "Failed to copy dist/*"; ls -la dist; exit 1; }
+
+          # copy optional files if present
+          [ -f origin.js ] && cp origin.js output/ || true
+          [ -f RELEASE.md ] && cp RELEASE.md output/ || true
+          [ -f dist/_worker.js ] && cp dist/_worker.js _worker.js || true
+
+          echo "output_list=$(ls -1 output || true)" >> $GITHUB_OUTPUT
+
+      - name: Commit build artifacts back to repo
+        if: always()
+        env:
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
+        run: |
+          set -euo pipefail
+          git status --porcelain --untracked-files=all || true
+
+          # Stage artifacts (output dir and optional files)
+          git add -A output || true
+          [ -f _worker.js ] && git add _worker.js || true
+          [ -f origin.js ] && git add origin.js || true
+          [ -f RELEASE.md ] && git add RELEASE.md || true
+
+          echo "Staged changes:"
+          git --no-pager diff --cached --name-status || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git -c user.name="$GIT_AUTHOR_NAME" -c user.email="$GIT_AUTHOR_EMAIL" commit -m "chore(ci): add build artifacts from workflow"
+            git push origin HEAD:main || echo "Push failed (check permissions)"
+          fi
+
+      - name: Upload Release Assets
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: output/*,dist/*            # 上传 output 下的产物（及 dist 下的文件以防遗漏）
+          tag: v${{ env.RELEASE_VERSION }}
+          release_name: Release v${{ env.RELEASE_VERSION }}
+          overwrite: true
+          file_glob: true
+          prerelease: false
+          body: ${{ steps.prepare_artifacts.outputs.RELEASE_BODY }}
