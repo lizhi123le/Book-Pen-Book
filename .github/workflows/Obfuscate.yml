@@ -43,12 +43,12 @@ jobs:
         id: fetch_upstream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_OWNER: lizhi123le                   # <-- 替换为实际 upstream owner/org
-          UPSTREAM_REPO: BPB-Worker-Panel              # <-- 替换为实际 upstream repo
+          UPSTREAM_OWNER: lizhi123le
+          UPSTREAM_REPO: BPB-Worker-Panel
         run: |
           set -euo pipefail
 
-          # 查询 upstream 的 latest release 信息并下载 worker.js（如果存在）
+          # Query upstream's latest release info and download worker.js (if exists)
           echo "Querying latest release for $UPSTREAM_OWNER/$UPSTREAM_REPO"
           RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
@@ -56,7 +56,7 @@ jobs:
           RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name // empty')
           echo "upstream_release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
-          DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name=="worker.js") | .browser_download_url' || true)
+          DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name=="worker.js") | .browser_download_url // empty')
           if [ -n "$DOWNLOAD_URL" ]; then
             echo "Found worker.js at $DOWNLOAD_URL, downloading..."
             wget -q -O origin.js "$DOWNLOAD_URL"
@@ -65,7 +65,7 @@ jobs:
             echo "No worker.js asset found in latest upstream release."
           fi
 
-          # 拉取 upstream 仓库 dev 分支的 package.json（用于同步版本）
+          # Pull upstream repo dev branch package.json (for version sync)
           echo "Downloading upstream package.json (dev branch)"
           wget -q -O /tmp/upstream_package.json "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/package.json" || true
           if [ -f /tmp/upstream_package.json ]; then
@@ -75,7 +75,7 @@ jobs:
             echo "upstream_package_json=false" >> $GITHUB_OUTPUT
           fi
 
-          # 下载本仓库 RELEASE.md（可选）
+          # Download repo RELEASE.md (optional)
           if wget -q -O RELEASE.md "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/RELEASE.md" || true; then
             echo "RELEASE_md=true" >> $GITHUB_OUTPUT
           else
@@ -102,7 +102,7 @@ jobs:
             exit 0
           fi
 
-          # 备份并更新 package.json 的 version 字段
+          # Backup and update package.json version field
           cp package.json package.json.bak
           jq --arg v "$UPVER" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
 
@@ -146,7 +146,6 @@ jobs:
 
           # Read RELEASE.md into output variable (URL-encode newlines)
           if [ -f RELEASE.md ]; then
-            # encode percent and newlines so it is safe to pass as a single-line output
             body=$(sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' RELEASE.md)
             echo "RELEASE_BODY=$body" >> $GITHUB_OUTPUT
           else
@@ -162,8 +161,6 @@ jobs:
 
           # Prepare output dir and copy artifacts
           mkdir -p output
-          # Use a safe copy pattern that won't fail the workflow command processing
-          # and avoid creating outputs with names that include newlines or other invalid chars.
           shopt -s nullglob
           copied_files=()
           for f in dist/*; do
@@ -172,22 +169,21 @@ jobs:
           done
           shopt -u nullglob
 
-          # copy optional files if present
+          # Copy optional files if present
           [ -f origin.js ] && cp origin.js output/ || true
           [ -f RELEASE.md ] && cp RELEASE.md output/ || true
-          # If dist/_worker.js exists, copy it into repository root as _worker.js (but avoid adding invalid output lines)
           if [ -f dist/_worker.js ]; then
             cp dist/_worker.js _worker.js || true
           fi
 
-          # Build a safe, newline-separated list for output (no trailing newlines that could confuse workflow commands)
+          # Build a safe, newline-separated list for output
           if [ -d output ]; then
             files_list=$(ls -1 output | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g')
             echo "output_list=$files_list" >> $GITHUB_OUTPUT
           else
             echo "output_list=" >> $GITHUB_OUTPUT
           fi
-		  
+
       - name: Commit build artifacts back to repo
         if: always()
         env:
@@ -215,7 +211,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: output/*            # 上传 output 下的产物（以及 dist 下复制过来的文件）
+          file: output/*
           tag: v${{ env.RELEASE_VERSION }}
           release_name: Release v${{ env.RELEASE_VERSION }}
           overwrite: true
