@@ -1,3 +1,3 @@
 name = "build"
-main = "src/worker.js"
+main = "_worker.js"
 compatibility_date = "2025-10-1"
