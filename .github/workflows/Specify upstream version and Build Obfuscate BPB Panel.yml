@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       upstream_version:
-        description: 'Specify upstream version to sync (e.g., v1.0.0 or 1.0.0)'
+        description: 'Specify upstream version to sync (e.g., 1.0.0 or v1.0.0)'
         required: false
         type: string
   schedule:
@@ -90,6 +90,22 @@ jobs:
             echo "RELEASE_md=true" >> $GITHUB_OUTPUT
           else
             echo "RELEASE_md=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Determine if specified version is the latest (only if specified)
+          if [ -n "$SPECIFIED_VERSION" ]; then
+            LATEST_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
+            LATEST_TAG=$(echo "$LATEST_INFO" | jq -r '.tag_name // empty')
+            NORMALIZED_SPECIFIED=$(echo "$SPECIFIED_VERSION" | sed 's/^v//')
+            NORMALIZED_LATEST=$(echo "$LATEST_TAG" | sed 's/^v//')
+            if [ "$NORMALIZED_SPECIFIED" = "$NORMALIZED_LATEST" ]; then
+              echo "is_latest=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_latest=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "is_latest=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Extract upstream version
@@ -181,7 +197,9 @@ jobs:
           fi
 
       - name: Commit build artifacts back to repo
-        if: always()
+        if: |
+          github.event_name != 'workflow_dispatch' ||
+          steps.fetch_upstream.outputs.is_latest == 'true'
         env:
           GIT_AUTHOR_NAME: "github-actions[bot]"
           GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
