@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       upstream_version:
-        description: 'Specify upstream version to sync (e.g., 1.0.0 or v1.0.0)'
+        description: 'Specify upstream version to sync (e.g., v1.0.0 or 1.0.0)'
         required: false
         type: string
   schedule:
