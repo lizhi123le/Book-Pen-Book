@@ -8,6 +8,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: 'Specify upstream version to sync (e.g., v1.0.0 or 1.0.0)'
+        required: false
+        type: string
   schedule:
     - cron: '0 */3 * * *'
 
@@ -41,15 +46,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPSTREAM_OWNER: lizhi123le
           UPSTREAM_REPO: BPB-Worker-Panel
+          SPECIFIED_VERSION: ${{ github.event.inputs.upstream_version }}
         run: |
           set -euo pipefail
 
-          # Query upstream's latest release info and download worker.js (if exists)
-          echo "Querying latest release for $UPSTREAM_OWNER/$UPSTREAM_REPO"
-          RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
+          if [ -n "$SPECIFIED_VERSION" ]; then
+            # Use specified version
+            echo "Using specified upstream version: $SPECIFIED_VERSION"
+            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/tags/$SPECIFIED_VERSION")
+            RELEASE_TAG="$SPECIFIED_VERSION"
+          else
+            # Fallback to latest
+            echo "No specified version; using latest upstream release"
+            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$UPSTREAM_OWNER/$UPSTREAM_REPO/releases/latest")
+            RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name // empty')
+          fi
 
-          RELEASE_TAG=$(echo "$RELEASE_INFO" | jq -r '.tag_name // empty')
           echo "upstream_release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
 
           DOWNLOAD_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name=="worker.js") | .browser_download_url // empty')
@@ -58,11 +72,11 @@ jobs:
             wget -q -O origin.js "$DOWNLOAD_URL"
             echo "Downloaded origin.js size:" && ls -l origin.js || true
           else
-            echo "No worker.js asset found in latest upstream release."
+            echo "No worker.js asset found in upstream release."
           fi
 
-          # Pull upstream repo dev branch package.json (for version sync)
-          echo "Downloading upstream package.json (dev branch)"
+          # Pull upstream repo dev branch package.json (for version sync fallback)
+          echo "Downloading upstream package.json (dev branch) for fallback"
           wget -q -O /tmp/upstream_package.json "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/package.json" || true
           if [ -f /tmp/upstream_package.json ]; then
             echo "upstream_package_json=true" >> $GITHUB_OUTPUT
@@ -71,7 +85,7 @@ jobs:
             echo "upstream_package_json=false" >> $GITHUB_OUTPUT
           fi
 
-          # Download repo RELEASE.md (optional)
+          # Download repo RELEASE.md (optional, from dev branch)
           if wget -q -O RELEASE.md "https://raw.githubusercontent.com/$UPSTREAM_OWNER/$UPSTREAM_REPO/refs/heads/dev/RELEASE.md" || true; then
             echo "RELEASE_md=true" >> $GITHUB_OUTPUT
           else
@@ -80,9 +94,15 @@ jobs:
 
       - name: Extract upstream version
         id: extract_upstream_version
+        env:
+          SPECIFIED_VERSION: ${{ github.event.inputs.upstream_version }}
         run: |
           set -euo pipefail
-          if [ -f /tmp/upstream_package.json ]; then
+          if [ -n "$SPECIFIED_VERSION" ]; then
+            # Use specified version (strip 'v' prefix if present)
+            UPVER=$(echo "$SPECIFIED_VERSION" | sed 's/^v//')
+            echo "version=$UPVER" >> $GITHUB_OUTPUT
+          elif [ -f /tmp/upstream_package.json ]; then
             VERSION=$(jq -r '.version // empty' /tmp/upstream_package.json)
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
