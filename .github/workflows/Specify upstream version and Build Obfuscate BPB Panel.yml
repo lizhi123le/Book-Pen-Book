@@ -221,6 +221,27 @@ jobs:
             git push origin HEAD:main || echo "Push failed (check permissions)"
           fi
 
+      - name: Ensure release version uses input if provided
+        id: set_release_from_input
+        run: |
+          set -euo pipefail
+          INPUT_VER="${{ github.event.inputs.upstream_version }}"
+          # If user provided an upstream_version input, prefer it. Normalize by stripping leading 'v' for consistency.
+          if [ -n "$INPUT_VER" ]; then
+            NORMALIZED_INPUT=$(echo "$INPUT_VER" | sed 's/^v//')
+            echo "Using upstream input version: $INPUT_VER (normalized: $NORMALIZED_INPUT)"
+            echo "RELEASE_VERSION=$NORMALIZED_INPUT" >> $GITHUB_ENV
+          else
+            # If no input provided, ensure RELEASE_VERSION is set (from package.json earlier)
+            if [ -z "${RELEASE_VERSION:-}" ]; then
+              echo "RELEASE_VERSION is not set; attempting to read from package.json"
+              RV=$(jq -r .version package.json)
+              echo "RELEASE_VERSION=$RV" >> $GITHUB_ENV
+            else
+              echo "Keeping existing RELEASE_VERSION=$RELEASE_VERSION"
+            fi
+          fi
+
       - name: Upload Release Assets
         uses: svenstaro/upload-release-action@v2
         with:
