@@ -127,7 +127,7 @@ const bundled = buildResult.outputFiles[0].text;
 // 2) minify with terser — randomize the compression rate (passes + toplevel)
 // so the minified output's characters change on every build
 const compressPasses = getRandomInt(1, 10);
-const compressToplevel = Math.random() < 0.5;
+const compressToplevel = Math.random() < 0.9;
 // Random extra switches that change the output shape without breaking it
 const keepFnNames = Math.random() < 0.5;
 const keepClassNames = Math.random() < 0.5;
