@@ -210,6 +210,8 @@ jobs:
           # Stage artifacts (output dir and optional files)
           git add -A output || true
           [ -f _worker.js ] && git add _worker.js || true
+          # Also commit origin.js if the upstream fetch changed it
+          [ -f origin.js ] && git add origin.js || true
 
           echo "Staged changes:"
           git --no-pager diff --cached --name-status || true
