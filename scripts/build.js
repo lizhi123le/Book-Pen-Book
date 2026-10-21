@@ -124,9 +124,26 @@ const buildResult = await build({
 
 const bundled = buildResult.outputFiles[0].text;
 
-// 2) minify with terser
+// 2) minify with terser — randomize the compression rate (passes + toplevel)
+// so the minified output's characters change on every build
+const compressPasses = getRandomInt(1, 10);
+const compressToplevel = Math.random() < 0.5;
+// Random extra switches that change the output shape without breaking it
+const keepFnNames = Math.random() < 0.5;
+const keepClassNames = Math.random() < 0.5;
+const booleansAsIntegers = Math.random() < 0.5;
+const dropConsole = Math.random() < 0.3; // 30%: strip console.* calls
+console.log(`🎲 Compression: passes=${compressPasses}, toplevel=${compressToplevel}, keep_fnames=${keepFnNames}, keep_classnames=${keepClassNames}, booleans_as_integers=${booleansAsIntegers}, drop_console=${dropConsole}`);
 const minified = await jsMinify(bundled, {
   module: true,
+  compress: {
+    passes: compressPasses,
+    toplevel: compressToplevel,
+    keep_fnames: keepFnNames,
+    keep_classnames: keepClassNames,
+    booleans_as_integers: booleansAsIntegers,
+    drop_console: dropConsole
+  },
   output: { comments: false }
 });
 
@@ -140,7 +157,7 @@ console.log(`📊 Minified size: ${Math.round(minified.code.length / 1024)}KB`);
 // Ensure output dir exists
 mkdirSync(DIST_PATH, { recursive: true });
 
-// Write non-obfuscated worker for convenience
+// Write minified (non-obfuscated) worker for convenience
 const plainPath = join(DIST_PATH, 'worker.js');
 writeFileSync(plainPath, '// @ts-nocheck\n' + minified.code, 'utf8');
 
